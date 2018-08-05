@@ -1,3 +1,4 @@
+#coding=utf8
 """
 Authur: Steven Wu
 
@@ -8,9 +9,12 @@ import sys
 import re
 from operator import itemgetter
 
-class InvestComParser:
+class InvestingComParser:
     def __init__(self):
         self.ChLine = "\r\n"
+        self.sEnterDataBlock = "Download Data"
+        self.sLeaveDataBlock = "Highest:"
+        self.sIgnoreBlockHead = "Date"
         self.mapMonth = {}
         self.mapMonth["Jan"] = 1
         self.mapMonth["Feb"] = 2
@@ -47,7 +51,7 @@ class InvestComParser:
         s = line.split("\t")
         if len(s) != 7:
             return
-        if s[0].strip() == "Date":
+        if s[0].strip() == self.sIgnoreBlockHead:
             return
         if s[5].strip() == "-":
             return
@@ -66,10 +70,10 @@ class InvestComParser:
         bDataRegion = False
         listData = []
         for l in lines:
-            if (not bParsed) and (not bDataRegion) and l.strip().find("Download Data") == 0:
+            if (not bParsed) and (not bDataRegion) and l.strip().find(self.sEnterDataBlock) == 0:
                 bDataRegion = True
             elif bDataRegion:
-                if l.find("Highest:") == 0:
+                if l.find(self.sLeaveDataBlock) == 0:
                     bDataRegion = False
                     bParsed = True
                 else:
@@ -84,10 +88,33 @@ class InvestComParser:
             out += s
         return out
 
+class InvestingComCNParser(InvestingComParser):
+    def __init__(self):
+        InvestingComParser.__init__(self)
+        self.sEnterDataBlock = "下载数据"
+        self.sLeaveDataBlock = "最高:"
+        self.sIgnoreBlockHead = "日期"
+    def ParseDate(self,ds):
+        s = filter(None,re.split("[年月日]",ds))
+        if len(s) != 3:
+            return ""
+        return self.OutDayString(int(s[0]),int(s[1]),int(s[2]))
+
+
 
 if __name__ == "__main__":
-    source = sys.argv[1]
-    dest = sys.argv[2]
-    out = InvestComParser().ParseLines(open(source,"r").readlines())
-    open(dest,"w").write(out)
+    pl = len(sys.argv)
+    if pl < 3:
+        print "usage: [python] InvestingComParser (Investing com page txt file) (output file) [-cn]"
+        print "Options:"
+        print "         -cn : use file from China(.cn) site"
+    else:
+        source = sys.argv[1]
+        dest = sys.argv[2]
+        parser = InvestingComParser()
+        if pl == 4:
+            if sys.argv[3] == "-cn":
+                parser = InvestingComCNParser()
+        out = parser.ParseLines(open(source,"r").readlines())
+        open(dest,"w").write(out)
 
