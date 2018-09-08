@@ -23,7 +23,7 @@ class TWFHistoryParser:
     def IsDayTrade(self,l):
         if len(l) == 17:
             return True
-        elif len(l) == 18 and l[17].decode("big5")==self.sDayTrade:
+        elif (len(l) == 18 or len(l) == 19) and l[17].decode("big5")==self.sDayTrade:
             return True
         return False
 
