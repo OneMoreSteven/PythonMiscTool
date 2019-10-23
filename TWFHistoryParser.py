@@ -3,12 +3,12 @@ import sys
 import csv
 import numpy as np
 
-ChLine="\r\n"
+ChLine="\n"
 
 class TWFHistoryParser:
     """Authur: Steven Wu
     """
-    def __init__(self,SelectedComm):
+    def __init__(self,SelectedComm,bDayTrade):
         self.SelectedComm = SelectedComm
         self.CurDate = ""
         self.lDate=[]
@@ -19,6 +19,9 @@ class TWFHistoryParser:
         self.lVolume=[]
         self.sDayTrade=u"一般"
         self.sNightTrade=u"盤後"
+        self.IsSelectedPeriod = self.IsNightTrade
+        if bDayTrade:
+            self.IsSelectedPeriod = self.IsDayTrade
 
     def IsDayTrade(self,l):
         if len(l) == 17:
@@ -27,6 +30,10 @@ class TWFHistoryParser:
             return True
         return False
 
+    def IsNightTrade(self,l):
+        if (len(l) >= 18) and l[17].decode("big5")==self.sNightTrade:
+            return True
+        return False
 
     def IsSelectedComm(self,l):
         if l[1]==self.SelectedComm and len(l[2].strip())<=6:
@@ -47,7 +54,7 @@ class TWFHistoryParser:
             if bFirstLine:
                 bFirstLine = False
                 continue
-            if not self.IsDayTrade(l):
+            if not self.IsSelectedPeriod(l):
                 continue
             if self.IsSelectedComm(l):
                 if self.IsNewDate(l):
@@ -71,8 +78,70 @@ class TWFHistoryParser:
             f.write((",".join(aLines[a])) + ChLine)
 
 
+_DataLists = ["lDate","lOpen","lHigh","lLow","lClose","lVolume"]
+def Handle2017(P,FirstDay):
+    lDate = getattr(P,"lDate")
+    FDidx = -1
+    for a in range(len(lDate)):
+        if lDate[a] == FirstDay:
+            FDidx = a
+            break
+    assert FDidx >= 0
+    for l in _DataLists:
+        lst = getattr(P,l)
+        setattr(P,l,lst[FDidx:])
+
+
+def MergeToDay(PD,PN):
+    #print len(PD.lOpen),len(PN.lOpen)
+    if int(PD.lDate[0].split("/")[0]) < 2017:
+        print "there is no full day data before 2017"
+        exit()
+    if PN.lDate[0].find("2017/") == 0:
+        Handle2017(PD,PN.lDate[0])
+
+    #print len(PD.lOpen),len(PN.lOpen)
+    nData = len(PD.lOpen)
+    for a in range(nData):
+        """
+            if TWF trade on Sat, there would be no night trade this day
+            so the next Mon data would lack night trade data
+            in this case, use day trade data alone
+        """
+        if PD.lDate[a] != PN.lDate[a]:
+            print "half day detect:",PD.lDate[a],PN.lDate[a]
+            for l in _DataLists:
+                lst = getattr(PN,l)
+                lst.insert(a,"")
+            continue
+        PD.lOpen[a] = PN.lOpen[a]
+        if float(PN.lHigh[a]) > float(PD.lHigh[a]):
+            PD.lHigh[a] = PN.lHigh[a]
+        if float(PN.lLow[a]) < float(PD.lLow[a]):
+            PD.lLow[a] = PN.lLow[a]
+        PD.lVolume[a] = str(int(PD.lVolume[a]) + int(PN.lVolume[a]))
+
 
 if __name__ == "__main__":
-    p=TWFHistoryParser(sys.argv[1])
-    p.ParseFile(sys.argv[2])
-    p.Output(sys.argv[3])
+    if len(sys.argv) == 5 and sys.argv[1] == "-f":
+        pd=TWFHistoryParser(sys.argv[2],True)
+        pd.ParseFile(sys.argv[3])
+        pn=TWFHistoryParser(sys.argv[2],False)
+        pn.ParseFile(sys.argv[3])
+        """
+        pd.Output("day.txt")
+        pn.Output("night.txt")
+        """
+        MergeToDay(pd,pn)
+        pd.Output(sys.argv[4])
+
+    elif len(sys.argv) == 4:
+        p=TWFHistoryParser(sys.argv[1],True)
+        p.ParseFile(sys.argv[2])
+        p.Output(sys.argv[3])
+    else:
+        print "usage:"
+        print "    Parse day trade"
+        print "     python TWFHistoryParser.py [commodity] [source file] [dest file]"
+        print "    Parse full trade"
+        print "     python TWFHistoryParser.py -f [commodity] [source file] [dest file]"
