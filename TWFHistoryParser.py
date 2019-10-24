@@ -114,6 +114,13 @@ def MergeToDay(PD,PN):
                 lst = getattr(PN,l)
                 lst.insert(a,"")
             continue
+        """
+            there is no valid night trade data, it shows '-' like this:
+            2017/12/26,UDF,201803,-,-,-,-,-,-,0,-,-,24765,24783,25000,20790,,盤後
+        """
+        if PN.lOpen[a] == "-":
+            print "no night trade data(-):",PN.lDate[a]
+            continue
         PD.lOpen[a] = PN.lOpen[a]
         if float(PN.lHigh[a]) > float(PD.lHigh[a]):
             PD.lHigh[a] = PN.lHigh[a]
