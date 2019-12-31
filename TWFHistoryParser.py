@@ -25,7 +25,7 @@ class TWFHistoryParser:
             self.IsSelectedPeriod = self.IsDayTrade
 
     def IsDayTrade(self,l):
-        if len(l) == 17:
+        if len(l) <= 17:
             return True
         elif (len(l) >= 18) and l[17].decode("big5")==self.sDayTrade:
             return True
