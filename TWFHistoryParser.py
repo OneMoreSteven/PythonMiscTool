@@ -8,8 +8,9 @@ ChLine="\n"
 class TWFHistoryParser:
     """Authur: Steven Wu
     """
-    def __init__(self,SelectedComm,bDayTrade):
+    def __init__(self,SelectedComm,bDayTrade,bParseWeekly):
         self.SelectedComm = SelectedComm
+        self.bParseWeekly = bParseWeekly
         self.CurDate = ""
         self.lDate=[]
         self.lOpen=[]
@@ -36,9 +37,12 @@ class TWFHistoryParser:
         return False
 
     def IsSelectedComm(self,l):
-        if l[1]==self.SelectedComm and len(l[2].strip())<=6:
+        if l[1]==self.SelectedComm and l[2].find("/") < 0:
             return True
         return False
+
+    def IsWeekly(self,l):
+        return l[2].find("W") >= 0
 
     def IsNewDate(self,l):
         if l[0]==self.CurDate:
@@ -55,6 +59,8 @@ class TWFHistoryParser:
                 bFirstLine = False
                 continue
             if not self.IsSelectedPeriod(l):
+                continue
+            if self.IsWeekly(l) and not self.bParseWeekly:
                 continue
             if self.IsSelectedComm(l):
                 if self.IsNewDate(l):
@@ -131,9 +137,9 @@ def MergeToDay(PD,PN):
 
 if __name__ == "__main__":
     if len(sys.argv) == 5 and sys.argv[1] == "-f":
-        pd=TWFHistoryParser(sys.argv[2],True)
+        pd=TWFHistoryParser(sys.argv[2],True,False)
         pd.ParseFile(sys.argv[3])
-        pn=TWFHistoryParser(sys.argv[2],False)
+        pn=TWFHistoryParser(sys.argv[2],False,False)
         pn.ParseFile(sys.argv[3])
         """
         pd.Output("day.txt")
@@ -141,9 +147,12 @@ if __name__ == "__main__":
         """
         MergeToDay(pd,pn)
         pd.Output(sys.argv[4])
-
+    if len(sys.argv) == 5 and sys.argv[1] == "-w":
+        p=TWFHistoryParser(sys.argv[2],True,True)
+        p.ParseFile(sys.argv[3])
+        p.Output(sys.argv[4])
     elif len(sys.argv) == 4:
-        p=TWFHistoryParser(sys.argv[1],True)
+        p=TWFHistoryParser(sys.argv[1],True,False)
         p.ParseFile(sys.argv[2])
         p.Output(sys.argv[3])
     else:
