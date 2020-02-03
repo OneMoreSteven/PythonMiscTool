@@ -11,7 +11,7 @@ from operator import itemgetter
 
 class InvestingComParser:
     def __init__(self):
-        self.ChLine = "\r\n"
+        self.ChLine = "\n"
         self.sEnterDataBlock = "Download Data"
         self.sLeaveDataBlock = "Highest:"
         self.sIgnoreBlockHead = "Date"
@@ -45,7 +45,10 @@ class InvestingComParser:
 
     def ParseFloat(self,fs):
         s=fs.split(",")
-        return "".join(s).strip()
+        r = "".join(s).strip()
+        if r.endswith(".0"):
+            r = r[:-2]
+        return r
 
     def ParseLine(self,line):
         s = line.split("\t")
@@ -57,6 +60,7 @@ class InvestingComParser:
             return
         data=[]
         data.append(self.ParseDate(s[0])) #Date
+        data.append("00:00:00") # Time
         data.append(self.ParseFloat(s[2])) #Open
         data.append(self.ParseFloat(s[3])) #High
         data.append(self.ParseFloat(s[4])) #Low
